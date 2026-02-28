@@ -1,0 +1,80 @@
+name: default
+task: "{task}"
+start: plan
+
+movements:
+  - name: plan
+    provider: claude
+    persona: config/personas/planner.md
+    prompt: |
+      You are given the following task:
+      {task}
+
+      Analyze the task and create a detailed implementation plan.
+      Consider the architecture, files to modify, and potential risks.
+    tools: "Read,Glob,Grep"
+    sandbox: read-only
+    max_turns: 20
+    rules:
+      - condition: approved
+        next: implement
+
+  - name: implement
+    provider: claude
+    persona: config/personas/coder.md
+    prompt: |
+      Implement the following plan:
+
+      {previous_response}
+
+      Original task:
+      {task}
+    tools: "Read,Write,Edit,Glob,Grep,Bash"
+    max_turns: 30
+    rules:
+      - condition: implementation complete
+        next: review
+
+  - name: review
+    provider: codex
+    persona: config/personas/reviewer.md
+    prompt: |
+      Review the implementation that was just completed.
+
+      Original task:
+      {task}
+
+      Implementation summary:
+      {previous_response}
+
+      Check for:
+      - Correctness and completeness
+      - Code quality and style
+      - Potential bugs or edge cases
+      - Test coverage
+    sandbox: read-only
+    max_turns: 10
+    rules:
+      - condition: approved
+        next: __COMPLETE__
+      - condition: needs_fix
+        next: fix
+
+  - name: fix
+    provider: claude
+    persona: config/personas/coder.md
+    prompt: |
+      The reviewer found issues with the implementation.
+
+      Review feedback:
+      {previous_response}
+
+      Original task:
+      {task}
+
+      Please fix the issues identified by the reviewer.
+    tools: "Read,Write,Edit,Glob,Grep,Bash"
+    max_turns: 30
+    rules:
+      - condition: fix complete
+        next: review

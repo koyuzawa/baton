@@ -1,0 +1,67 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "thor"
+require_relative "../lib/baton"
+
+module Baton
+  class CLI < Thor
+    desc "run PIECE", "Execute a piece workflow"
+    option :task, type: :string, aliases: "-t", desc: "Task description to pass to the workflow"
+    option :piece, type: :string, aliases: "-p", default: nil, desc: "Path to piece YAML file"
+    def run_piece(piece_name = "default")
+      piece_path = options[:piece] || find_piece(piece_name)
+      unless piece_path && File.exist?(piece_path)
+        puts "Error: Piece '#{piece_name}' not found at #{piece_path}"
+        exit 1
+      end
+
+      config = Models::PieceLoader.load_file(piece_path)
+      task = options[:task] || config.task || ""
+
+      Baton.setup!
+
+      logger = Engine::Logger.new
+      engine = Engine::PieceEngine.new(config, task: task, logger: logger)
+      engine.run
+    end
+
+    desc "list", "List available pieces"
+    def list
+      pieces_dir = File.expand_path("../config/pieces", __dir__)
+      unless Dir.exist?(pieces_dir)
+        puts "No pieces directory found at #{pieces_dir}"
+        return
+      end
+
+      Dir.glob(File.join(pieces_dir, "*.yaml")).each do |path|
+        name = File.basename(path, ".yaml")
+        puts "  #{name}"
+      end
+    end
+
+    desc "providers", "List registered providers"
+    def providers
+      Baton.setup!
+      puts "Registered providers:"
+      Providers::Registry.keys.each { |k| puts "  #{k}" }
+    end
+
+    desc "version", "Show baton version"
+    def version
+      puts "baton #{VERSION}"
+    end
+
+    # Thor uses "run" internally, so we map the command name
+    map "run" => :run_piece
+
+    private
+
+    def find_piece(name)
+      config_dir = File.expand_path("../config/pieces", __dir__)
+      File.join(config_dir, "#{name}.yaml")
+    end
+  end
+end
+
+Baton::CLI.start(ARGV)
