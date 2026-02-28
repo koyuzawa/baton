@@ -13,6 +13,11 @@ require_relative "baton/engine/piece_engine"
 module Baton
   VERSION = "0.1.0"
 
+  # Root directory of the gem (for locating bundled config files)
+  def self.root
+    File.expand_path("..", __dir__)
+  end
+
   # Register built-in providers
   def self.setup!
     Providers::Registry.clear!

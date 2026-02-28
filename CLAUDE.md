@@ -24,6 +24,7 @@ bin/baton (CLI/Thor) → Engine::PieceEngine (メインループ)
 ```
 baton/
 ├── CLAUDE.md                          # このファイル
+├── baton.gemspec                      # gem パッケージ定義
 ├── Gemfile
 ├── bin/baton                          # CLI エントリポイント (Thor)
 ├── lib/baton.rb                       # メインローダー
@@ -52,17 +53,17 @@ baton/
 ## コマンド
 
 ```bash
-# ワークフロー実行
-bin/baton run                        # default.yaml を実行
-bin/baton run default -t "タスク内容"  # タスク指定で実行
-bin/baton run -p path/to/piece.yaml   # カスタム piece ファイル指定
-bin/baton run -f plan.md              # プランファイルから実装開始 (from-plan.yaml)
-bin/baton run -f plan.md -t "タスク"   # プランファイル + タスク指定
+# ワークフロー実行 (Rails プロジェクト内で bundle exec)
+bundle exec baton run -t "タスク内容"      # default.yaml を実行
+bundle exec baton run -f plan.md           # プランファイルから実装開始
+bundle exec baton run -f plan.md -t "タスク" # プランファイル + タスク指定
+bundle exec baton run -p path/to/piece.yaml # カスタム piece ファイル指定
+bundle exec baton run -d /path/to/project   # 別ディレクトリを対象に実行
 
 # 情報表示
-bin/baton list                       # 利用可能な piece 一覧
-bin/baton providers                  # 登録済みプロバイダー一覧
-bin/baton version                    # バージョン表示
+bundle exec baton list                     # 利用可能な piece 一覧
+bundle exec baton providers                # 登録済みプロバイダー一覧
+bundle exec baton version                  # バージョン表示
 ```
 
 ## テスト実行

@@ -18,10 +18,11 @@ module Baton
 
       attr_reader :state
 
-      def initialize(config, task: nil, plan: nil, logger: nil)
+      def initialize(config, task: nil, plan: nil, working_dir: nil, logger: nil)
         @config = config
         @task = task || config.task || ""
         @plan = plan || ""
+        @working_dir = working_dir
         @logger = logger || Logger.new
         @state = Models::PieceState.new(
           current_movement: config.start
@@ -109,14 +110,15 @@ module Baton
           tools: movement.tools,
           sandbox: movement.sandbox,
           max_turns: movement.max_turns,
-          session_id: @state.session_ids[movement.provider]
+          session_id: @state.session_ids[movement.provider],
+          working_dir: @working_dir
         })
       end
 
       def load_persona(persona_path)
         return "" if persona_path.nil? || persona_path.empty?
 
-        full_path = File.expand_path(persona_path, File.join(__dir__, "..", "..", ".."))
+        full_path = File.expand_path(persona_path, Baton.root)
         return "" unless File.exist?(full_path)
 
         File.read(full_path)

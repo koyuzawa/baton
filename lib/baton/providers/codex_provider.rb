@@ -19,7 +19,9 @@ module Baton
       def call(prompt, options = {})
         full_prompt = build_prompt(prompt, options)
         cmd = build_command(full_prompt, options)
-        stdout, stderr, status = Open3.capture3(*cmd)
+        spawn_opts = {}
+        spawn_opts[:chdir] = options[:working_dir] if options[:working_dir]
+        stdout, stderr, status = Open3.capture3(*cmd, **spawn_opts)
 
         unless status.success?
           raise "Codex CLI failed (exit #{status.exitstatus}): #{stderr}"

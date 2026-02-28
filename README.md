@@ -7,6 +7,18 @@ YAML で定義したワークフロー（piece）に従い、Claude Code と Cod
 
 ## インストール
 
+### Rails プロジェクトの Gemfile に追加
+
+```ruby
+gem "baton", github: "your-org/baton"
+```
+
+```bash
+bundle install
+```
+
+### スタンドアロン
+
 ```bash
 git clone https://github.com/your-org/baton.git
 cd baton
@@ -21,20 +33,23 @@ bundle install
 
 ## 使い方
 
-### 基本
+### 基本（Rails プロジェクト内で実行）
 
 ```bash
-# デフォルトワークフロー (plan → implement → review)
-bin/baton run -t "ユーザー認証機能を追加"
+# Rails プロジェクトのルートで実行（カレントディレクトリで agent が動作）
+bundle exec baton run -t "ユーザー認証機能を追加"
 
 # プランファイルから実装開始 (plan ステップをスキップ)
-bin/baton run -f plan.md
+bundle exec baton run -f plan.md
 
 # プランファイル + タスク指定
-bin/baton run -f plan.md -t "JWT認証で実装して"
+bundle exec baton run -f plan.md -t "JWT認証で実装して"
 
 # カスタム piece ファイルを指定
-bin/baton run -p my_workflow.yaml -t "タスク内容"
+bundle exec baton run -p my_workflow.yaml -t "タスク内容"
+
+# 別ディレクトリのプロジェクトを対象に実行
+bundle exec baton run -d /path/to/project -t "タスク内容"
 ```
 
 ### その他のコマンド

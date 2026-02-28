@@ -15,7 +15,7 @@ module Baton
 
       # @param prompt [String] the prompt to send
       # @param options [Hash] provider-specific options
-      #   :system_prompt, :tools, :sandbox, :max_turns, :session_id
+      #   :system_prompt, :tools, :sandbox, :max_turns, :session_id, :working_dir
       # @return [Baton::Models::AgentResponse]
       def call(prompt, options = {})
         raise NotImplementedError, "#{self.class}#call must be implemented"

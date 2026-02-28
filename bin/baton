@@ -10,7 +10,14 @@ module Baton
     option :task, type: :string, aliases: "-t", desc: "Task description to pass to the workflow"
     option :piece, type: :string, aliases: "-p", default: nil, desc: "Path to piece YAML file"
     option :plan, type: :string, aliases: "-f", default: nil, desc: "Path to plan file (skip plan step, start from implement)"
+    option :dir, type: :string, aliases: "-d", default: ".", desc: "Working directory for agent execution"
     def run_piece(piece_name = "default")
+      working_dir = File.expand_path(options[:dir])
+      unless Dir.exist?(working_dir)
+        puts "Error: Directory not found: #{working_dir}"
+        exit 1
+      end
+
       plan_content = nil
 
       if options[:plan]
@@ -34,13 +41,13 @@ module Baton
       Baton.setup!
 
       logger = Engine::Logger.new
-      engine = Engine::PieceEngine.new(config, task: task, plan: plan_content, logger: logger)
+      engine = Engine::PieceEngine.new(config, task: task, plan: plan_content, working_dir: working_dir, logger: logger)
       engine.run
     end
 
     desc "list", "List available pieces"
     def list
-      pieces_dir = File.expand_path("../config/pieces", __dir__)
+      pieces_dir = File.join(Baton.root, "config", "pieces")
       unless Dir.exist?(pieces_dir)
         puts "No pieces directory found at #{pieces_dir}"
         return
@@ -70,8 +77,7 @@ module Baton
     private
 
     def find_piece(name)
-      config_dir = File.expand_path("../config/pieces", __dir__)
-      File.join(config_dir, "#{name}.yaml")
+      File.join(Baton.root, "config", "pieces", "#{name}.yaml")
     end
   end
 end

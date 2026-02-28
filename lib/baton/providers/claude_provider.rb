@@ -22,7 +22,9 @@ module Baton
 
       def call(prompt, options = {})
         cmd = build_command(prompt, options)
-        stdout, stderr, status = Open3.capture3(*cmd)
+        spawn_opts = {}
+        spawn_opts[:chdir] = options[:working_dir] if options[:working_dir]
+        stdout, stderr, status = Open3.capture3(*cmd, **spawn_opts)
 
         unless status.success?
           raise "Claude CLI failed (exit #{status.exitstatus}): #{stderr}"
