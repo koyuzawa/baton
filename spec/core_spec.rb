@@ -526,6 +526,111 @@ RSpec.describe "Baton" do
     end
   end
 
+  describe Baton::Engine::PieceEngine, "interactive mode" do
+    let(:output) { StringIO.new }
+    let(:logger) { Baton::Engine::Logger.new(output: output) }
+
+    let(:interactive_config) do
+      Baton::Models::PieceLoader.parse(
+        "name" => "interactive-test",
+        "task" => "build feature",
+        "start" => "plan",
+        "movements" => [
+          {
+            "name" => "plan",
+            "provider" => "mock",
+            "persona" => "",
+            "prompt" => "Plan: {task}",
+            "tools" => "Read",
+            "max_turns" => 5,
+            "interactive" => true,
+            "rules" => [
+              { "condition" => "approved", "next" => "implement" }
+            ]
+          },
+          {
+            "name" => "implement",
+            "provider" => "mock",
+            "persona" => "",
+            "prompt" => "Implement: {previous_response}",
+            "tools" => "Read,Write",
+            "max_turns" => 10,
+            "rules" => []
+          }
+        ]
+      )
+    end
+
+    it "approves on empty input and transitions to next movement" do
+      mock = MockProvider.new("mock", responses: [
+        Baton::Models::AgentResponse.new(result: "Here is the plan.", session_id: "s1", cost_usd: 0.01, raw: ""),
+        Baton::Models::AgentResponse.new(result: "Done.", session_id: "s2", cost_usd: 0.02, raw: "")
+      ])
+      Baton::Providers::Registry.register("mock", mock)
+
+      # Simulate human pressing Enter (empty input = approve)
+      human_input = StringIO.new("\n")
+      allow(logger).to receive(:prompt_human).and_return("")
+
+      engine = Baton::Engine::PieceEngine.new(interactive_config, task: "build feature", logger: logger)
+      state = engine.run
+
+      expect(state.history).to eq(%w[plan implement])
+      expect(mock.calls.size).to eq(2)
+    end
+
+    it "loops with feedback then approves" do
+      mock = MockProvider.new("mock", responses: [
+        Baton::Models::AgentResponse.new(result: "Draft plan v1.", session_id: "s1", cost_usd: 0.01, raw: ""),
+        Baton::Models::AgentResponse.new(result: "Revised plan v2.", session_id: "s1", cost_usd: 0.01, raw: ""),
+        Baton::Models::AgentResponse.new(result: "Implementation done.", session_id: "s2", cost_usd: 0.05, raw: "")
+      ])
+      Baton::Providers::Registry.register("mock", mock)
+
+      # First call: feedback, second call: approve
+      call_count = 0
+      allow(logger).to receive(:prompt_human) do
+        call_count += 1
+        call_count == 1 ? "もっと詳しく書いて" : ""
+      end
+      allow(logger).to receive(:show_interactive_result)
+      allow(logger).to receive(:human_feedback)
+      allow(logger).to receive(:human_approved)
+
+      engine = Baton::Engine::PieceEngine.new(interactive_config, task: "build feature", logger: logger)
+      state = engine.run
+
+      expect(state.history).to eq(%w[plan plan implement])
+      expect(mock.calls.size).to eq(3)
+      # Second call to plan should contain the feedback
+      expect(mock.calls[1][:prompt]).to eq("もっと詳しく書いて")
+    end
+
+    it "does not inject rules into interactive movement prompts" do
+      mock = MockProvider.new("mock", responses: [
+        Baton::Models::AgentResponse.new(result: "Plan.", session_id: "s1", cost_usd: 0.01, raw: ""),
+        Baton::Models::AgentResponse.new(result: "Done.", session_id: "s2", cost_usd: 0.02, raw: "")
+      ])
+      Baton::Providers::Registry.register("mock", mock)
+
+      allow(logger).to receive(:prompt_human).and_return("")
+      allow(logger).to receive(:show_interactive_result)
+      allow(logger).to receive(:human_approved)
+
+      engine = Baton::Engine::PieceEngine.new(interactive_config, task: "build feature", logger: logger)
+      engine.run
+
+      # Interactive movement prompt should NOT contain rule tags
+      expect(mock.calls[0][:prompt]).not_to include("[PLAN:0]")
+    end
+
+    it "parses interactive field from YAML" do
+      config = interactive_config
+      expect(config.movements["plan"].interactive).to be true
+      expect(config.movements["implement"].interactive).to be false
+    end
+  end
+
   describe Baton::Engine::Logger do
     it "outputs movement lifecycle messages" do
       output = StringIO.new
@@ -541,6 +646,15 @@ RSpec.describe "Baton" do
       expect(text).to include("plan")
       expect(text).to include("impl")
       expect(text).to include("claude")
+    end
+
+    it "outputs interactive result and prompts" do
+      output = StringIO.new
+      log = Baton::Engine::Logger.new(output: output)
+
+      log.show_interactive_result("The plan content here")
+      text = output.string
+      expect(text).to include("The plan content here")
     end
   end
 end

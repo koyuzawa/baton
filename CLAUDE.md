@@ -75,8 +75,9 @@ bundle exec baton version                  # バージョン表示
 ## デフォルトワークフロー (default.yaml)
 
 ```
-plan (Claude, read-only)
-  └─ [PLAN:0] approved → implement
+plan (Claude, read-only, interactive)
+  ├─ 人間がフィードバック → plan を再実行 (セッション継続)
+  └─ 人間が空入力で承認 → implement
 
 implement (Claude, edit)
   └─ [IMPLEMENT:0] complete → review
@@ -88,6 +89,9 @@ review (Codex, read-only)
 fix (Claude, edit)
   └─ [FIX:0] complete → review (ループ)
 ```
+
+plan ステップは `interactive: true` により、Claude の出力後に人間の確認を挟む。
+フィードバックを入力すると Claude セッションを再開して修正、空入力で承認して implement へ進む。
 
 ## プランファイル実行 (from-plan.yaml)
 
@@ -105,7 +109,28 @@ fix (Claude, edit)
 
 テンプレートプレースホルダー: `{task}`, `{previous_response}`, `{plan}`
 
+## Interactive モード
+
+Movement に `interactive: true` を設定すると、provider 実行後に人間の入力を待つ。
+
+- **空入力** → 承認。最初のルールの `next` に遷移。
+- **テキスト入力** → フィードバック。同じ movement をセッション継続で再実行。
+
+ルールタグは interactive movement のプロンプトには注入されない（人間が遷移を決定するため）。
+
+```yaml
+movements:
+  - name: plan
+    provider: claude
+    interactive: true   # ← これを追加
+    rules:
+      - condition: approved
+        next: implement
+```
+
 ## ルール評価の優先順位
+
+非 interactive movement でのルール評価:
 
 1. 正確なタグマッチ: `[TAG:N]` (例: `[REVIEW:0]`)
 2. 汎用パターン: `[MOVEMENT:N]`

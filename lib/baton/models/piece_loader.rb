@@ -35,7 +35,8 @@ module Baton
             tools: m["tools"],
             sandbox: m["sandbox"],
             max_turns: m["max_turns"] || 20,
-            rules: rules
+            rules: rules,
+            interactive: m["interactive"] || false
           )
           movements[m["name"]] = movement
         end

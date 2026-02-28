@@ -10,15 +10,16 @@ module Baton
     Rule = Struct.new(:tag, :index, :condition, :next_movement, keyword_init: true)
 
     # One step in the piece workflow.
-    # name       – unique identifier (e.g. "plan", "implement")
-    # provider   – provider key (e.g. "claude", "codex")
-    # persona    – path to the persona markdown file
-    # prompt     – the prompt template (may contain {task}, {previous_response})
-    # tools      – allowed tool list (provider-specific)
-    # sandbox    – sandbox mode for codex ("read-only", "workspace-write")
-    # max_turns  – maximum conversation turns
-    # rules      – array of Rule
-    Movement = Struct.new(:name, :provider, :persona, :prompt, :tools, :sandbox, :max_turns, :rules, keyword_init: true)
+    # name        – unique identifier (e.g. "plan", "implement")
+    # provider    – provider key (e.g. "claude", "codex")
+    # persona     – path to the persona markdown file
+    # prompt      – the prompt template (may contain {task}, {previous_response})
+    # tools       – allowed tool list (provider-specific)
+    # sandbox     – sandbox mode for codex ("read-only", "workspace-write")
+    # max_turns   – maximum conversation turns
+    # rules       – array of Rule
+    # interactive – if true, pause for human input after each execution
+    Movement = Struct.new(:name, :provider, :persona, :prompt, :tools, :sandbox, :max_turns, :rules, :interactive, keyword_init: true)
 
     # Top-level configuration loaded from a piece YAML file.
     # name       – piece name

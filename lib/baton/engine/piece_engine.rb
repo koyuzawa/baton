@@ -27,6 +27,7 @@ module Baton
         @state = Models::PieceState.new(
           current_movement: config.start
         )
+        @pending_feedback = nil
       end
 
       def run
@@ -55,7 +56,27 @@ module Baton
             @state.session_ids[movement.provider] = response.session_id
           end
 
-          # Evaluate rules to determine next movement
+          # Interactive mode: show result and ask for human input
+          if movement.interactive
+            next_name = handle_interactive(movement, response)
+            break if next_name.nil?
+
+            if next_name == :feedback
+              # Re-run the same movement with feedback
+              next
+            end
+
+            if next_name.upcase == COMPLETE
+              @logger.movement_end(movement.name, nil)
+              break
+            end
+
+            @logger.movement_end(movement.name, next_name)
+            @state.current_movement = next_name
+            next
+          end
+
+          # Non-interactive: evaluate rules to determine next movement
           matched_rule = RuleEvaluator.evaluate(response.result, movement.rules)
 
           if matched_rule
@@ -86,19 +107,42 @@ module Baton
         @config.movements[@state.current_movement]
       end
 
+      def handle_interactive(movement, response)
+        @logger.show_interactive_result(response.result)
+        human_input = @logger.prompt_human
+
+        if human_input.empty?
+          @logger.human_approved
+          # Take the first rule's next movement
+          first_rule = movement.rules.first
+          return first_rule&.next_movement
+        end
+
+        # Human provided feedback — re-run the movement
+        @logger.human_feedback
+        @pending_feedback = human_input
+        :feedback
+      end
+
       def execute_movement(movement)
         provider = Providers::Registry.fetch(movement.provider)
 
-        # Build the prompt
-        prompt = InstructionBuilder.build(
-          movement.prompt,
-          task: @task,
-          previous_response: @state.previous_response,
-          plan: @plan
-        )
+        if @pending_feedback
+          # Interactive re-run: send only the feedback (session is resumed)
+          prompt = @pending_feedback
+          @pending_feedback = nil
+        else
+          # Normal execution: build from template
+          prompt = InstructionBuilder.build(
+            movement.prompt,
+            task: @task,
+            previous_response: @state.previous_response,
+            plan: @plan
+          )
 
-        # Inject rule choices
-        prompt = RuleEvaluator.inject_rules(prompt, movement.rules)
+          # Inject rule choices only for non-interactive movements
+          prompt = RuleEvaluator.inject_rules(prompt, movement.rules) unless movement.interactive
+        end
 
         # Load persona
         system_prompt = load_persona(movement.persona)

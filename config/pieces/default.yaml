@@ -10,11 +10,14 @@ movements:
       You are given the following task:
       {task}
 
-      Analyze the task and create a detailed implementation plan.
+      Analyze the codebase and create a detailed implementation plan.
       Consider the architecture, files to modify, and potential risks.
+
+      Output the plan in a clear, structured format.
     tools: "Read,Glob,Grep"
     sandbox: read-only
     max_turns: 20
+    interactive: true
     rules:
       - condition: approved
         next: implement

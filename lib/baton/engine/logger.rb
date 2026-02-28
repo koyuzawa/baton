@@ -41,6 +41,28 @@ module Baton
         @output.puts @pastel.white("  #{message}")
       end
 
+      def show_interactive_result(text)
+        @output.puts
+        @output.puts @pastel.white.bold("─" * 60)
+        @output.puts text
+        @output.puts @pastel.white.bold("─" * 60)
+        @output.puts
+      end
+
+      def prompt_human(input: $stdin)
+        @output.print @pastel.cyan.bold("フィードバック (空入力で承認): ")
+        @output.flush
+        input.gets&.chomp || ""
+      end
+
+      def human_approved
+        @output.puts @pastel.green("  ✓ 承認されました")
+      end
+
+      def human_feedback
+        @output.puts @pastel.yellow("  ↻ フィードバックを反映して再実行します")
+      end
+
       def complete(history)
         @output.puts @pastel.green.bold("✓ Piece complete! Movements: #{history.join(' → ')}")
       end
