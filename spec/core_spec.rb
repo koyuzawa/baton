@@ -185,6 +185,20 @@ RSpec.describe "Baton" do
       result = Baton::Engine::InstructionBuilder.build("Do: {task} ({previous_response})", task: "hi")
       expect(result).to eq("Do: hi ()")
     end
+
+    it "replaces {plan} placeholder" do
+      result = Baton::Engine::InstructionBuilder.build(
+        "Implement:\n{plan}\nTask: {task}",
+        task: "add auth",
+        plan: "## Step 1\nCreate user model"
+      )
+      expect(result).to eq("Implement:\n## Step 1\nCreate user model\nTask: add auth")
+    end
+
+    it "handles missing plan gracefully" do
+      result = Baton::Engine::InstructionBuilder.build("Plan: {plan}", task: "x")
+      expect(result).to eq("Plan: ")
+    end
   end
 
   describe Baton::Providers::Registry do
@@ -403,6 +417,77 @@ RSpec.describe "Baton" do
         state = engine.run
 
         expect(state.history).to eq(%w[run])
+      end
+    end
+
+    context "plan file workflow: implement → review with {plan} expansion" do
+      let(:config) do
+        Baton::Models::PieceLoader.parse(
+          "name" => "from-plan",
+          "task" => "add auth",
+          "start" => "implement",
+          "movements" => [
+            {
+              "name" => "implement",
+              "provider" => "mock",
+              "persona" => "",
+              "prompt" => "Implement:\n{plan}\nTask: {task}",
+              "tools" => "Read,Write",
+              "max_turns" => 10,
+              "rules" => [
+                { "condition" => "implementation complete", "next" => "review" }
+              ]
+            },
+            {
+              "name" => "review",
+              "provider" => "mock",
+              "persona" => "",
+              "prompt" => "Review:\n{previous_response}\nPlan:\n{plan}",
+              "sandbox" => "read-only",
+              "max_turns" => 5,
+              "rules" => [
+                { "condition" => "approved", "next" => "__COMPLETE__" }
+              ]
+            }
+          ]
+        )
+      end
+
+      it "injects plan content into prompts and skips plan step" do
+        mock = MockProvider.new("mock", responses: [
+          Baton::Models::AgentResponse.new(
+            result: "Implemented login. [IMPLEMENT:0]",
+            session_id: nil, cost_usd: nil, raw: ""
+          ),
+          Baton::Models::AgentResponse.new(
+            result: "Looks good. [REVIEW:0]",
+            session_id: nil, cost_usd: nil, raw: ""
+          )
+        ])
+        Baton::Providers::Registry.register("mock", mock)
+
+        plan_text = "## Plan\n1. Create User model\n2. Add login endpoint"
+        engine = Baton::Engine::PieceEngine.new(config, task: "add auth", plan: plan_text, logger: logger)
+        state = engine.run
+
+        # Skipped plan, started at implement
+        expect(state.history).to eq(%w[implement review])
+
+        # Plan content was injected into implement prompt
+        expect(mock.calls[0][:prompt]).to include("Create User model")
+        expect(mock.calls[0][:prompt]).to include("add auth")
+
+        # Plan content was injected into review prompt too
+        expect(mock.calls[1][:prompt]).to include("Create User model")
+      end
+
+      it "loads from-plan.yaml piece file" do
+        path = File.expand_path("../config/pieces/from-plan.yaml", __dir__)
+        config = Baton::Models::PieceLoader.load_file(path)
+
+        expect(config.name).to eq("from-plan")
+        expect(config.start).to eq("implement")
+        expect(config.movements.keys).to eq(%w[implement review fix])
       end
     end
 

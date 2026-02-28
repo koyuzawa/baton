@@ -9,7 +9,19 @@ module Baton
     desc "run PIECE", "Execute a piece workflow"
     option :task, type: :string, aliases: "-t", desc: "Task description to pass to the workflow"
     option :piece, type: :string, aliases: "-p", default: nil, desc: "Path to piece YAML file"
+    option :plan, type: :string, aliases: "-f", default: nil, desc: "Path to plan file (skip plan step, start from implement)"
     def run_piece(piece_name = "default")
+      plan_content = nil
+
+      if options[:plan]
+        unless File.exist?(options[:plan])
+          puts "Error: Plan file not found: #{options[:plan]}"
+          exit 1
+        end
+        plan_content = File.read(options[:plan])
+        piece_name = "from-plan" unless options[:piece]
+      end
+
       piece_path = options[:piece] || find_piece(piece_name)
       unless piece_path && File.exist?(piece_path)
         puts "Error: Piece '#{piece_name}' not found at #{piece_path}"
@@ -22,7 +34,7 @@ module Baton
       Baton.setup!
 
       logger = Engine::Logger.new
-      engine = Engine::PieceEngine.new(config, task: task, logger: logger)
+      engine = Engine::PieceEngine.new(config, task: task, plan: plan_content, logger: logger)
       engine.run
     end
 

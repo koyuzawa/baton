@@ -1,0 +1,70 @@
+name: from-plan
+task: "{task}"
+start: implement
+
+movements:
+  - name: implement
+    provider: claude
+    persona: config/personas/coder.md
+    prompt: |
+      Implement the following plan:
+
+      {plan}
+
+      Original task:
+      {task}
+    tools: "Read,Write,Edit,Glob,Grep,Bash"
+    max_turns: 30
+    rules:
+      - condition: implementation complete
+        next: review
+
+  - name: review
+    provider: codex
+    persona: config/personas/reviewer.md
+    prompt: |
+      Review the implementation that was just completed.
+
+      Original task:
+      {task}
+
+      Plan that was implemented:
+      {plan}
+
+      Implementation summary:
+      {previous_response}
+
+      Check for:
+      - Correctness and completeness against the plan
+      - Code quality and style
+      - Potential bugs or edge cases
+      - Test coverage
+    sandbox: read-only
+    max_turns: 10
+    rules:
+      - condition: approved
+        next: __COMPLETE__
+      - condition: needs_fix
+        next: fix
+
+  - name: fix
+    provider: claude
+    persona: config/personas/coder.md
+    prompt: |
+      The reviewer found issues with the implementation.
+
+      Review feedback:
+      {previous_response}
+
+      Original plan:
+      {plan}
+
+      Original task:
+      {task}
+
+      Please fix the issues identified by the reviewer.
+    tools: "Read,Write,Edit,Glob,Grep,Bash"
+    max_turns: 30
+    rules:
+      - condition: fix complete
+        next: review

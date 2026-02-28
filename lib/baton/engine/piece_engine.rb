@@ -18,9 +18,10 @@ module Baton
 
       attr_reader :state
 
-      def initialize(config, task: nil, logger: nil)
+      def initialize(config, task: nil, plan: nil, logger: nil)
         @config = config
         @task = task || config.task || ""
+        @plan = plan || ""
         @logger = logger || Logger.new
         @state = Models::PieceState.new(
           current_movement: config.start
@@ -91,7 +92,8 @@ module Baton
         prompt = InstructionBuilder.build(
           movement.prompt,
           task: @task,
-          previous_response: @state.previous_response
+          previous_response: @state.previous_response,
+          plan: @plan
         )
 
         # Inject rule choices

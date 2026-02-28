@@ -42,6 +42,7 @@ baton/
 │       └── logger.rb                  # Pastel カラー出力
 ├── config/
 │   ├── pieces/default.yaml            # デフォルトワークフロー定義
+│   ├── pieces/from-plan.yaml          # プランファイル指定時のワークフロー
 │   └── personas/                      # planner.md, coder.md, reviewer.md
 └── spec/
     ├── spec_helper.rb
@@ -55,6 +56,8 @@ baton/
 bin/baton run                        # default.yaml を実行
 bin/baton run default -t "タスク内容"  # タスク指定で実行
 bin/baton run -p path/to/piece.yaml   # カスタム piece ファイル指定
+bin/baton run -f plan.md              # プランファイルから実装開始 (from-plan.yaml)
+bin/baton run -f plan.md -t "タスク"   # プランファイル + タスク指定
 
 # 情報表示
 bin/baton list                       # 利用可能な piece 一覧
@@ -84,6 +87,22 @@ review (Codex, read-only)
 fix (Claude, edit)
   └─ [FIX:0] complete → review (ループ)
 ```
+
+## プランファイル実行 (from-plan.yaml)
+
+```
+implement (Claude, edit) ← {plan} にプランファイル内容を展開
+  └─ [IMPLEMENT:0] complete → review
+
+review (Codex, read-only)
+  ├─ [REVIEW:0] approved → COMPLETE
+  └─ [REVIEW:1] needs_fix → fix
+
+fix (Claude, edit)
+  └─ [FIX:0] complete → review (ループ)
+```
+
+テンプレートプレースホルダー: `{task}`, `{previous_response}`, `{plan}`
 
 ## ルール評価の優先順位
 
