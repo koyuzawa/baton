@@ -10,7 +10,7 @@ YAML で定義したワークフロー（piece）に従い、Claude Code と Cod
 ### Rails プロジェクトの Gemfile に追加
 
 ```ruby
-gem "baton", github: "your-org/baton"
+gem "baton", github: "koyuzawa/baton"
 ```
 
 ```bash
@@ -20,7 +20,7 @@ bundle install
 ### スタンドアロン
 
 ```bash
-git clone https://github.com/your-org/baton.git
+git clone https://github.com/koyuzawa/baton.git
 cd baton
 bundle install
 ```
